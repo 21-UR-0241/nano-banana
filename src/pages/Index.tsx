@@ -44,35 +44,73 @@ const Index = () => {
 
   const totalSteps = 7;
 
+  // // Load generation history when user logs in
+  // useEffect(() => {
+  //   if (user) {
+  //     const q = query(
+  //       collection(db, "generationHistory"),
+  //       where("userId", "==", user.uid),
+  //       orderBy("timestamp", "desc")
+  //     );
+
+  //     const unsubscribe = onSnapshot(q, (querySnapshot) => {
+  //       const history: GenerationHistory[] = [];
+  //       querySnapshot.forEach((doc) => {
+  //         const data = doc.data();
+  //         history.push({
+  //           id: doc.id,
+  //           prompt: data.prompt,
+  //           imageUrl: data.imageUrl,
+  //           timestamp: data.timestamp.toDate(),
+  //           userId: data.userId,
+  //         });
+  //       });
+  //       setGenerationHistory(history);
+  //     });
+
+  //     return () => unsubscribe();
+  //   } else {
+  //     setGenerationHistory([]);
+  //   }
+  // }, [user]);
+
   // Load generation history when user logs in
-  useEffect(() => {
-    if (user) {
-      const q = query(
-        collection(db, "generationHistory"),
-        where("userId", "==", user.uid),
-        orderBy("timestamp", "desc")
-      );
+  useEffect(() => {
+    if (user) {
+      const q = query(
+        collection(db, "generationHistory"),
+        where("userId", "==", user.uid),
+        orderBy("timestamp", "desc")
+      );
 
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const history: GenerationHistory[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          history.push({
-            id: doc.id,
-            prompt: data.prompt,
-            imageUrl: data.imageUrl,
-            timestamp: data.timestamp.toDate(),
-            userId: data.userId,
-          });
-        });
-        setGenerationHistory(history);
-      });
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const history: GenerationHistory[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          history.push({
+            id: doc.id,
+            prompt: data.prompt,
+            imageUrl: data.imageUrl,
+            timestamp: data.timestamp.toDate(),
+            userId: data.userId,
+          });
+        });
+        
+        // FIX: Populate both history and the images to be displayed
+        setGenerationHistory(history); 
+        const historyImageUrls = history.map(item => item.imageUrl);
+        setGeneratedImages(historyImageUrls);
+      });
 
-      return () => unsubscribe();
-    } else {
+      return () => unsubscribe();
+    } else {
+      // Clear both states on logout
       setGenerationHistory([]);
-    }
-  }, [user]);
+      setGeneratedImages([]);
+    }
+  }, [user]);
+
+
 
   const handleStepData = (stepData: Partial<OnboardingData>) => {
     setOnboardingData(prev => ({ ...prev, ...stepData }));
