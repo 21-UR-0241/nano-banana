@@ -248,9 +248,11 @@ const Index = () => {
     return `${basePrompt}, ${temperature}${selectedModifiers.join(', ')}, ${uniqueId}`;
   }, []);
 
-  // 🎨 Updated handleGenerateImage with Prompt Variation
-  const handleGenerateImage = useCallback((customPrompt: string, jsonPrompt: Record<string, unknown>, sourceImage?: string) => {
-    // Prevent multiple simultaneous generations
+
+
+  
+  // 🎨 Updated handleGenerateImage with async/await for reliability
+const handleGenerateImage = useCallback(async (customPrompt: string, jsonPrompt: Record<string, unknown>, sourceImage?: string) => {
     if (isGenerating) {
       console.log('⚠️ Generation already in progress, ignoring duplicate call');
       toast({
@@ -266,65 +268,128 @@ const Index = () => {
     try {
       const promptData = buildPrompt(onboardingData as OnboardingData);
       const basePrompt = customPrompt || formatPromptForAI(promptData);
-
-      // 🎨 ADD VARIATION TO THE PROMPT TO ENSURE UNIQUE IMAGES
       const variedPrompt = addPromptVariation(basePrompt);
-
-      // Generate unique identifiers for additional randomization
       const randomSeed = Math.floor(Math.random() * 1000000000);
       const timestamp = Date.now();
       const uniqueNonce = Math.random().toString(36).substring(7);
-
-      console.log("🎨 Original prompt:", basePrompt);
-      console.log("✨ Varied prompt:", variedPrompt);
-      console.log("🔢 Random seed:", randomSeed);
-      console.log("🆔 Generation ID:", `gen-${timestamp}-${randomSeed}`);
-
-      // Encode the VARIED prompt
       const encodedPrompt = encodeURIComponent(variedPrompt);
-      
-      // Add random seed and timestamp to URL for additional uniqueness
       const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&model=flux&seed=${randomSeed}&timestamp=${timestamp}&nonce=${uniqueNonce}`;
 
       console.log("🖼️ Image URL:", imageUrl);
 
-      // Immediately add the image URL without waiting for load
-      setGeneratedImages(prev => [imageUrl, ...prev]);
-
-      // Save to Firestore asynchronously (save original prompt for reference)
+      // Save to Firestore and wait for the operation to complete
       if (user) {
-        addDoc(collection(db, "generationHistory"), {
-          prompt: basePrompt, // Save original prompt
-          variedPrompt: variedPrompt, // Also save varied prompt for debugging
+        await addDoc(collection(db, "generationHistory"), {
+          prompt: basePrompt,
+          variedPrompt: variedPrompt,
           imageUrl: imageUrl,
           timestamp: new Date(),
           userId: user.uid,
           seed: randomSeed,
           generationId: `gen-${timestamp}-${randomSeed}`,
           jsonPrompt: jsonPrompt,
-        }).catch(error => console.error("Error saving to history:", error));
+        });
       }
 
+      // ✅ Success toast now only shows AFTER the image is saved successfully
       toast({
-        title: "Image generated!",
+        title: "Image generated and saved!",
         description: "Your unique marketing visual is ready.",
       });
 
     } catch (error: unknown) {
-      console.error("❌ Generation error:", error);
+      console.error("❌ Generation or save error:", error);
       toast({
-        title: "Generation failed",
-        description: "Please try again.",
+        title: "Operation failed",
+        description: "Could not generate or save the image. Please try again.",
         variant: "destructive",
       });
     } finally {
-      // Reset generating state after a delay to prevent rapid duplicate calls
+      // Reset generating state after a delay
       setTimeout(() => {
         setIsGenerating(false);
         console.log("✅ Generation lock released");
       }, 1000);
     }
-  }, [isGenerating, onboardingData, user, addPromptVariation]);
+}, [isGenerating, onboardingData, user, addPromptVariation]);
+
+  // // 🎨 Updated handleGenerateImage with Prompt Variation
+  // const handleGenerateImage = useCallback((customPrompt: string, jsonPrompt: Record<string, unknown>, sourceImage?: string) => {
+  //   // Prevent multiple simultaneous generations
+  //   if (isGenerating) {
+  //     console.log('⚠️ Generation already in progress, ignoring duplicate call');
+  //     toast({
+  //       title: "Please wait",
+  //       description: "A generation is already in progress",
+  //       variant: "destructive",
+  //     });
+  //     return;
+  //   }
+
+  //   setIsGenerating(true);
+
+  //   try {
+  //     const promptData = buildPrompt(onboardingData as OnboardingData);
+  //     const basePrompt = customPrompt || formatPromptForAI(promptData);
+
+  //     // 🎨 ADD VARIATION TO THE PROMPT TO ENSURE UNIQUE IMAGES
+  //     const variedPrompt = addPromptVariation(basePrompt);
+
+  //     // Generate unique identifiers for additional randomization
+  //     const randomSeed = Math.floor(Math.random() * 1000000000);
+  //     const timestamp = Date.now();
+  //     const uniqueNonce = Math.random().toString(36).substring(7);
+
+  //     console.log("🎨 Original prompt:", basePrompt);
+  //     console.log("✨ Varied prompt:", variedPrompt);
+  //     console.log("🔢 Random seed:", randomSeed);
+  //     console.log("🆔 Generation ID:", `gen-${timestamp}-${randomSeed}`);
+
+  //     // Encode the VARIED prompt
+  //     const encodedPrompt = encodeURIComponent(variedPrompt);
+      
+  //     // Add random seed and timestamp to URL for additional uniqueness
+  //     const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&model=flux&seed=${randomSeed}&timestamp=${timestamp}&nonce=${uniqueNonce}`;
+
+  //     console.log("🖼️ Image URL:", imageUrl);
+
+  //     // // Immediately add the image URL without waiting for load
+  //     // setGeneratedImages(prev => [imageUrl, ...prev]);
+
+  //     // Save to Firestore asynchronously (save original prompt for reference)
+  //     if (user) {
+  //       addDoc(collection(db, "generationHistory"), {
+  //         prompt: basePrompt, // Save original prompt
+  //         variedPrompt: variedPrompt, // Also save varied prompt for debugging
+  //         imageUrl: imageUrl,
+  //         timestamp: new Date(),
+  //         userId: user.uid,
+  //         seed: randomSeed,
+  //         generationId: `gen-${timestamp}-${randomSeed}`,
+  //         jsonPrompt: jsonPrompt,
+  //       }).catch(error => console.error("Error saving to history:", error));
+  //     }
+
+  //     toast({
+  //       title: "Image generated!",
+  //       description: "Your unique marketing visual is ready.",
+  //     });
+
+  //   } catch (error: unknown) {
+  //     console.error("❌ Generation error:", error);
+  //     toast({
+  //       title: "Generation failed",
+  //       description: "Please try again.",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     // Reset generating state after a delay to prevent rapid duplicate calls
+  //     setTimeout(() => {
+  //       setIsGenerating(false);
+  //       console.log("✅ Generation lock released");
+  //     }, 1000);
+  //   }
+  // }, [isGenerating, onboardingData, user, addPromptVariation]);
 
   //download image
   const handleDownload = async (imageUrl: string, format: string) => {
