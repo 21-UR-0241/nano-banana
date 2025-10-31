@@ -501,5 +501,6 @@ export const ImageGallery = ({ images, onDownload, onRegenerate, isRegenerating 
         );
       })}
     </div>
+    
   );
 };
